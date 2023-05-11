@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+import 'dart:math';
+
+import 'package:vector_math/vector_math_64.dart';
+
 import '../../../pdf.dart';
 import '../flex.dart';
 import '../geometry.dart';
@@ -37,6 +41,7 @@ class BarDataSet<T extends PointChartValue> extends PointDataSet<T> {
     this.offset = 0,
     this.axis = Axis.horizontal,
     PdfColor? pointColor,
+    List<PdfColor>? colors,
     double pointSize = 3,
     bool drawPoints = false,
     BuildCallback? shape,
@@ -56,7 +61,8 @@ class BarDataSet<T extends PointChartValue> extends PointDataSet<T> {
           valuePosition: valuePosition,
           borderColor: borderColor,
           borderWidth: borderWidth,
-        );
+          colors: colors,
+      );
 
   final bool drawBorder;
 
@@ -77,7 +83,8 @@ class BarDataSet<T extends PointChartValue> extends PointDataSet<T> {
         final x = p.x + offset - width / 2;
         final height = p.y - y;
 
-        context.canvas.drawRect(x, y, width, height);
+        context.canvas
+            .drawRect(x, y, width, height);
         break;
       case Axis.vertical:
         final x = (grid is CartesianGrid) ? grid.yAxisOffset : 0.0;
@@ -86,6 +93,48 @@ class BarDataSet<T extends PointChartValue> extends PointDataSet<T> {
         final height = p.x - x;
 
         context.canvas.drawRect(x, y, height, width);
+        break;
+    }
+  }
+
+  void _drawLabel(Context context, ChartGrid grid, T value) {
+    switch (axis) {
+      case Axis.horizontal:
+        final y = (grid is CartesianGrid) ? grid.xAxisOffset : 0.0;
+        final p = grid.toChart(value.point);
+        final x = (p.x == double.infinity || p.x.isNaN
+            ? 0.0 + offset + width
+            : p.x + offset);
+        final height = p.y - y;
+
+        final font = context.canvas.defaultFont!;
+        final text = value.y.toString();
+        const fontSize = 8.0;
+        const angle = 2*pi;
+
+        final metrics = font.stringMetrics(text) * fontSize;
+
+        context.canvas
+          ..saveContext()
+          ..setFillColor(PdfColors.black)
+          ..setTransform(
+            Matrix4.identity()
+              ..translate(x - 10, y + height + 10 ) // Text position
+              ..rotateZ(angle)
+              ..translate(-metrics.left, -metrics.top - metrics.height / 2), // Center of Rotation
+          )
+          ..drawString(
+            font,
+            fontSize,
+            text,
+            0,
+            0,
+          )
+          ..restoreContext();
+
+        break;
+      case Axis.vertical:
+      // TODO:
         break;
     }
   }
@@ -107,9 +156,13 @@ class BarDataSet<T extends PointChartValue> extends PointDataSet<T> {
     final grid = Chart.of(context).grid;
 
     if (drawSurface) {
-      for (final value in data) {
+      data.asMap().forEach((key, value) {
+        _drawLabel(context, grid, value);
         _drawSurface(context, grid, value);
-      }
+        context.canvas
+          ..setFillColor(colors![key])
+          ..fillPath();
+      });
 
       if (surfaceOpacity != 1) {
         context.canvas
@@ -119,10 +172,6 @@ class BarDataSet<T extends PointChartValue> extends PointDataSet<T> {
           );
       }
 
-      context.canvas
-        ..setFillColor(color)
-        ..fillPath();
-
       if (surfaceOpacity != 1) {
         context.canvas.restoreContext();
       }
@@ -130,10 +179,13 @@ class BarDataSet<T extends PointChartValue> extends PointDataSet<T> {
 
     if (drawBorder) {
       for (final value in data) {
+        _drawLabel(context, grid, value);
         _drawSurface(context, grid, value);
+
       }
 
       context.canvas
+        ..setLineDashPattern([0, 2, 4])
         ..setStrokeColor(borderColor ?? color)
         ..setLineWidth(borderWidth)
         ..strokePath();
@@ -142,11 +194,11 @@ class BarDataSet<T extends PointChartValue> extends PointDataSet<T> {
 
   @override
   ValuePosition automaticValuePosition(
-    PdfPoint point,
-    PdfPoint size,
-    PdfPoint? previous,
-    PdfPoint? next,
-  ) {
+      PdfPoint point,
+      PdfPoint size,
+      PdfPoint? previous,
+      PdfPoint? next,
+      ) {
     final pos = super.automaticValuePosition(point, size, previous, next);
     if (pos == ValuePosition.right || pos == ValuePosition.left) {
       return ValuePosition.top;

@@ -154,6 +154,7 @@ abstract class Dataset extends Widget {
     this.color,
     this.borderColor,
     this.borderWidth = .5,
+    this.colors,
   });
 
   final String? legend;
@@ -163,6 +164,8 @@ abstract class Dataset extends Widget {
   final PdfColor? borderColor;
 
   final double borderWidth;
+
+  final List<PdfColor>? colors;
 
   void paintBackground(Context context) {}
 
