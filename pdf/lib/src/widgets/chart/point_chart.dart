@@ -39,6 +39,7 @@ class PointDataSet<T extends PointChartValue> extends Dataset {
     PdfColor color = PdfColors.blue,
     PdfColor? borderColor,
     double borderWidth = 1.5,
+    List<PdfColor>? colors,
     this.drawPoints = true,
     this.shape,
     this.buildValue,
@@ -48,6 +49,7 @@ class PointDataSet<T extends PointChartValue> extends Dataset {
           color: color,
           borderColor: borderColor,
           borderWidth: borderWidth,
+          colors: colors,
         );
 
   final List<T> data;
